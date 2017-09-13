@@ -3,6 +3,7 @@
 const fs = require('fs');
 const log = require('./log');
 const path = require('path');
+const readJsonSync = require('read-json-sync');
 
 /**
  * @return {object} parsed JSON config
@@ -39,17 +40,34 @@ function normalizeConfig(config) {
 	return config;
 }
 
+/**
+ * @return {void}
+ */
+function guessProjectTypeIfNeeded() {
+	if (!projectConfig.projectType) {
+		if (fs.existsSync(path.join(process.cwd(), 'build.xml'))) {
+			projectConfig.projectType = 'war';
+		} else if (fs.existsSync(path.join(process.cwd(), 'build.gradle'))) {
+			projectConfig.projectType = 'osgi';
+
+			const pkgJsonPath = path.join(process.cwd(), 'package.json');
+
+			if (fs.existsSync(pkgJsonPath)) {
+				const pkgJson = readJsonSync(pkgJsonPath);
+
+				if (pkgJson.scripts && pkgJson.scripts.build) {
+					projectConfig.projectType = 'osgi-npm';
+				}
+			}
+		}
+	}
+}
+
 // Load project config
 const projectConfig = loadProjectConfig();
 
 // Guess project type if not given in config
-if (!projectConfig.projectType) {
-	if (fs.existsSync(path.join(process.cwd(), 'build.xml'))) {
-		projectConfig.projectType = 'war';
-	} else if (fs.existsSync(path.join(process.cwd(), 'build.gradle'))) {
-		projectConfig.projectType = 'osgi';
-	}
-}
+guessProjectTypeIfNeeded();
 
 // Tell user about project type
 log.info('config', `Project type set to: ${projectConfig.projectType}`);
