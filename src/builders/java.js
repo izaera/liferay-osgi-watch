@@ -8,8 +8,8 @@ const gulp = require('gulp');
 const log = require('../util/log');
 const projectDeps = require('../util/projectDeps');
 
-const buildGradleArgs = projects => {
-	const skippedTasks = [
+const buildGradleArgs = (projects, cfg) => {
+	const skippedTasks = cfg.config.skippedTasks || [
 		'transpileJS',
 		'configJSModules',
 		'npmInstall',
@@ -18,17 +18,21 @@ const buildGradleArgs = projects => {
 		'downloadNode',
 		'jar',
 	];
+
 	const args = ['compileJava'];
+
 	projects.forEach(project =>
 		skippedTasks.forEach(task => {
 			args.push('-x');
 			args.push(project + ':' + task);
 		}),
 	);
+
 	skippedTasks.forEach(task => {
 		args.push('-x');
 		args.push(task);
 	});
+
 	return args;
 };
 
@@ -40,7 +44,7 @@ gulp.task('build-java', done => {
 
 	projectDeps().then(projects => {
 		let compileResult = fs.existsSync('build.gradle')
-			? gradle(buildGradleArgs(projects))
+			? gradle(buildGradleArgs(projects, cfg))
 			: ant(['compile']);
 
 		compileResult.then(
